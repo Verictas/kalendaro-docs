@@ -1,0 +1,626 @@
+openapi: 3.1.0
+info:
+  title: Kalendaro API
+  version: '1.0'
+servers:
+  - url: 'http://localhost:3000'
+paths:
+  /calendars:
+    get:
+      summary: List Calendars
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Calendar'
+                required:
+                  - data
+      operationId: get-calendars
+      description: Lists all calendars that this module provides
+    post:
+      summary: Add Calendar
+      operationId: post-calendars
+      responses:
+        '200':
+          description: OK
+      description: Adds a Calendar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/Calendar'
+  '/calendars/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        description: Calendar Identifier
+        required: true
+    get:
+      summary: List Calendar Events
+      tags: []
+      responses:
+        '200':
+          description: OK
+          headers: {}
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CalendarEvent'
+                required:
+                  - data
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+      operationId: get-calendar-id
+      description: 'List all events for a calendar, without any regard for syncing, just fetches all'
+    delete:
+      summary: Deletes a Calendar
+      operationId: delete-calendars-id
+      responses:
+        '204':
+          description: Sent when the calendar is sucessfully deleted
+        '403':
+          $ref: '#/components/responses/NoPermissionsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+      description: 'Depending on the provider, might fail on some calendars (such as the primary calendar). If you try to delete the primary calendar when unsupported, you will get a 403.'
+    post:
+      summary: Add Calendar Event
+      operationId: post-calendars-id
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CalendarEvent'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      details:
+                        type: string
+      description: Add calendar event to the given calendar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/CalendarEvent'
+  '/calendars/{id}/sync':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    post:
+      summary: Sync Calendar to last known state
+      operationId: post-calendar-id-sync
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  syncToken:
+                    type: string
+                    description: Opaque token to be sent when you sync again later
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CalendarEvent'
+                required:
+                  - syncToken
+                  - events
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                syncToken:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Pass your sync token from an earlier sync, or pass null/undefined to do an initial sync'
+              required:
+                - syncToken
+      description: 'Syncs the calendar, starting with the state indicated by the sync token, up to the current state and gives you a new sync token'
+  '/calendars/{id}/clear':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    post:
+      summary: Clear all Events from a Calendar
+      operationId: post-calendars-id-clear
+      responses:
+        '204':
+          description: Gets returned when the calendar is cleared
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+      description: 'Clears all events within this calendar, leaving an empty calendar'
+  '/calendars/{id}/{eventId}':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: eventId
+        in: path
+        required: true
+    get:
+      summary: Get specific Calendar Event
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CalendarEvent'
+        '403':
+          $ref: '#/components/responses/NoPermissionsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+      operationId: get-calendars-id-eventId
+      description: Gets specific calendar event
+    delete:
+      summary: Delete specific Calendar Event
+      operationId: delete-calendars-id-eventId
+      responses:
+        '204':
+          description: Gets returned when the event is deleted
+        '403':
+          $ref: '#/components/responses/NoPermissionsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+      description: Delete specific calendar event
+    patch:
+      summary: Change specific Calendar Event
+      operationId: patch-calendars-id-eventId
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CalendarEvent'
+        '403':
+          $ref: '#/components/responses/NoPermissionsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+      description: Changes content of the Calendar Event
+  '/calendars/{id}/freeBusy':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    post:
+      summary: Get Calendar Free/Busy
+      operationId: post-calendars-id-freeBusy
+      responses:
+        '200':
+          description: 'Array of occupied times, and their occupation type. All other times can be assumed to be free.'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - occupied
+                    properties:
+                      occupied:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            startDate:
+                              type: string
+                              description: ISO string indicating the start of occupied time
+                            endDate:
+                              type: string
+                              description: ISO string indicating the end of occupied time
+                            type:
+                              type: string
+                              description: Type of occupation
+                              enum:
+                                - busy
+                                - away
+                                - tentative
+                          required:
+                            - startDate
+                            - endDate
+                            - type
+                required:
+                  - data
+        '403':
+          $ref: '#/components/responses/NoPermissionsResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '501':
+          description: Returned when the current calendar provider does not provide free/busy information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    required:
+                      - id
+                    properties:
+                      id:
+                        type: string
+                        enum:
+                          - not-implemented
+                required:
+                  - error
+      description: Gets free/busy state on calendar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  description: ISO string indicating the start date time to search for
+                enddate:
+                  type: string
+                  description: ISO string indicating the last datetime to search for
+              required:
+                - startDate
+                - enddate
+  '/calendars/{id}/resources':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    get:
+      summary: Get available resources for this Calendar
+      tags: []
+      responses:
+        '501':
+          description: TODO
+      operationId: get-calendars-id-resources
+      description: Gets available location resources for this calendar
+components:
+  schemas:
+    CalendarEvent:
+      title: CalendarEvent
+      type: object
+      description: 'Calendar Event schema, also used when submitting'
+      properties:
+        id:
+          type: string
+          description: 'Identifier as assigned by the provider, also used in the URL'
+          readOnly: true
+        ical_uid:
+          type: string
+          description: RFC5545 id for this event
+        created_at:
+          type: string
+          description: ISO timestamp indicating the creation time of this event
+          readOnly: true
+        attendees:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarEventAttendee'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarEventAttachment'
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarEventLocation'
+        color:
+          type: string
+          description: Color in hex code notation for this event
+        start:
+          $ref: '#/components/schemas/CalendarEventTimes'
+        end:
+          $ref: '#/components/schemas/CalendarEventTimes'
+        description:
+          type: string
+          description: Free form description (in HTML)
+        type:
+          type: string
+          description: Type of event
+          enum:
+            - away
+            - focus
+            - other-job
+        rights:
+          type: object
+          description: Rights that your current context has on this event
+          required:
+            - propose_new_time
+            - modify
+            - view_attendees
+            - invite_others
+          properties:
+            propose_new_time:
+              type: boolean
+              description: Does the user have permissions to propose a new time?
+              readOnly: true
+            modify:
+              type: boolean
+              description: Can the user modify this event?
+              readOnly: true
+            view_attendees:
+              type: boolean
+              description: 'If false, the attendees array does not show anyone else because you have no rights'
+              readOnly: true
+            invite_others:
+              type: boolean
+              description: Can this user invite others?
+              readOnly: true
+        recurrence:
+          type: array
+          description: 'List of RRULE, EXRULE, RDATE and EXDATE lines for this event, as specified in RFC5545'
+          items:
+            type: string
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarEventReminder'
+        title:
+          type: string
+          description: Event title to be shown on the overview
+        visibility:
+          type: string
+          description: Visibility of the event
+          enum:
+            - public
+            - private
+            - confidential
+      required:
+        - id
+        - ical_uid
+        - created_at
+        - attendees
+        - locations
+        - start
+        - end
+        - type
+        - rights
+        - recurrence
+        - title
+        - visibility
+    Calendar:
+      title: Calendar
+      type: object
+      description: ''
+      properties:
+        id:
+          type: string
+          description: Globally unique identifier for this calendar
+        name:
+          type: string
+          description: Display name for this calendar
+        provider:
+          type: string
+          description: Globally unique identifier for the calendar provider
+      required:
+        - id
+        - name
+        - provider
+    CalendarEventAttendee:
+      title: Attendee
+      type: object
+      properties:
+        email:
+          type: string
+          description: Email address of the attendee
+        name:
+          type: string
+          description: Display name of the attendee
+        organizer:
+          type: boolean
+          description: Is this attendee the organizer of the event?
+        response:
+          type: object
+          properties:
+            status:
+              type: string
+              description: 'Status of the response by the attendee, status will be unknown when no response is given, or this provider does not accept statusses'
+              enum:
+                - accepted
+                - tentative
+                - declined
+                - unknown
+            comment:
+              type: string
+              description: Comment left by the attendee for this event
+        optional:
+          type: boolean
+          description: Is the attendee optional for this event?
+      required:
+        - email
+        - name
+        - organizer
+        - optional
+    CalendarEventAttachment:
+      title: Attachment
+      type: object
+      properties:
+        id:
+          type: string
+          description: Attachment identifier
+          readOnly: true
+        url:
+          type: string
+          description: URL that the attachment is found at
+        title:
+          type: string
+          description: 'Title to show for the attachment, often the filename'
+          readOnly: true
+        mime_type:
+          type: string
+          description: 'MIME type of the attachment, can be used to show an icon specific to this type of file'
+          readOnly: true
+      required:
+        - url
+    CalendarEventLocation:
+      title: CalendarEventLocation
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - online
+            - offline
+            - resource
+          description: 'Indicates the type of location, online includes a link, resource-booking includes details on the booking, offline indicates a free-form offline location (e.g. maps picker)'
+        display_name:
+          type: string
+          description: 'Name to be displayed for this location, might be maps location string or "Google Meet conference" or any other type of identfier name'
+        resource_details:
+          type: object
+          description: Only given when the type is "resource"
+          properties:
+            id:
+              type: string
+              description: 'Identifier id for this location, often email'
+          required:
+            - id
+        online_details:
+          type: object
+          description: Only given when the type is online
+          properties:
+            link:
+              type: string
+              description: Indicates the link to the web resource where this meeting takes place
+          required:
+            - link
+      required:
+        - type
+        - display_name
+    CalendarEventTimes:
+      title: CalendarEventTimes
+      type: object
+      properties:
+        date:
+          type: string
+          description: Date in ISO notation (YYYY-mm-dd)
+        time:
+          type: string
+          description: 'Time in ISO notation (HH:mm:ss), if missing, this is an all day event'
+        timezone:
+          type: string
+          description: 'Timezone that the time should be interpreted in, only present for events with start and end times'
+      required:
+        - date
+    CalendarEventReminder:
+      title: CalendarEventReminder
+      type: object
+      properties:
+        type:
+          type: string
+          description: Type of reminder requested
+          enum:
+            - email
+            - notification
+        minutes:
+          type: string
+          description: Amount of minutes before the event to notify at
+      required:
+        - type
+        - minutes
+  responses:
+    NotFoundResponse:
+      description: Requested resource cannot be found.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    enum:
+                      - not-found
+                  description:
+                    type: string
+                    enum:
+                      - Resource cannot be found.
+                required:
+                  - id
+                  - description
+    NoPermissionsResponse:
+      description: User has no permissions for the requested action.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    enum:
+                      - forbidden
+                  description:
+                    type: string
+                    enum:
+                      - You do not have access rights to perform this operation.
+                required:
+                  - id
+                  - description
